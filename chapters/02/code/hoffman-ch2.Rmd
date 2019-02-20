@@ -1,0 +1,150 @@
+---
+title: "Chapter 2 Examples"
+output: html_notebook
+---
+
+
+
+```{r}
+# remove all elements for a clean start
+rm(list=ls(all=TRUE))
+```
+
+### Load Packages
+```{r}
+require(sas7bdat)
+library(nlme)
+library(lme4)
+library(emmeans)
+library(here)
+```
+
+### Load Data
+```{r}
+pathDir  <- here()
+pathCh2  <- file.path(pathDir,"chapters/02/data/SAS_Chapter2.sas7bdat")
+dsL2   <- read.sas7bdat(pathCh2, debug=TRUE) 
+ds <- dsL2
+```
+
+### column names
+```{r}
+names(ds)
+```
+
+### counts/structure of data
+```{r}
+str(ds)
+```
+
+### change sex and demgroup to factors
+```{r}
+ds$sexMW <- as.factor(ds$sexMW)
+ds$demgroup <- as.factor(ds$demgroup)
+```
+
+### description (mean, median, etc.)
+```{r}
+summary(ds)
+```
+
+### show the breakdown of the data types
+```{r}
+table(ds$sexMW, ds$demgroup)
+```
+
+### culminative sum
+```{r}
+cumsum(table(ds$demgroup))
+```
+
+### EmptyMeansModel
+```{r}
+model_null <- nlme::gls(cognition ~ 1, data=ds, method="REML")
+summary(model_null)
+```
+
+### Null Model Covariance Parameter Estimate
+```{r}
+summary(model_null)$sigma^2
+```
+
+### center variables
+```{r}
+ds$age85 <- ds$age - 85
+ds$grip9 <- ds$grip - 9
+```
+
+### model age
+```{r}
+model_age85 <- nlme::gls(cognition ~ 1 + age85, data=ds, method="REML")
+summary(model_age85)
+ds$model_age85 <- predict(model_age85)
+```
+
+### add age Model Covariance Parameter Estimate
+```{r}
+summary(model_age85)$sigma^2
+```
+
+### compare null model versus adding age
+```{r}
+anova(model_null, model_age85)
+```
+
+### model of unadjusted age
+```{r}
+model_age <- nlme::gls(cognition ~ 1 + age, data=ds, method="REML")
+summary(model_age)
+summary(model_age)$sigma^2
+```
+
+### Model add grip
+```{r}
+model_add_grip <- nlme::gls(cognition ~ 1 + age85 + grip9, data=ds, method="REML")
+summary(model_add_grip)
+summary(model_add_grip)$sigma^2
+```
+
+### Model add sex (M=0, W=1)
+```{r}
+ds$sexMW <- factor(ds$sexMW, levels=c(0, 1))
+model_add_sex_m0 <- nlme::gls(cognition ~ 1 + age85 + grip9 + sexMW, data=ds, method="REML")
+summary(model_add_sex_m0)
+summary(model_add_sex_m0)$sigma^2
+```
+
+### Model add sex (W=1, M=0)
+```{r}
+ds$sexMW <- factor(ds$sexMW, levels=c(1, 0))
+model_add_sex_w0 <- nlme::gls(cognition ~ 1 + age85 + grip9 + sexMW, data=ds, method="REML")
+summary(model_add_sex_w0)
+summary(model_add_sex_w0)$sigma^2
+```
+
+### Model add demgroup
+```{r}
+model_add_demgroup <- nlme::gls(cognition ~ 1 + age85 + grip9 + sexMW + demgroup, data=ds, method="REML")
+summary(model_add_demgroup)
+summary(model_add_demgroup)$sigma^2
+```
+
+### get all contrasts
+```{r}
+emmeans(model_add_demgroup, pairwise~demgroup)
+```
+
+### Model add interaction age85*grip9
+```{r}
+model_add_int <- nlme::gls(cognition ~ 1 + age85*grip9 + sexMW + demgroup, data=ds, method="REML")
+summary(model_add_int)
+summary(model_add_int)$sigma^2
+```
+
+### Model add interaction sex*dem
+```{r}
+model_add_ints <- nlme::gls(cognition ~ 1 + age85*grip9 + sexMW*demgroup, data=ds, method="REML")
+summary(model_add_ints)
+summary(model_add_ints)$sigma^2
+```
+
